@@ -96,7 +96,7 @@ function OnPostSpawn()
         hTimer.__KeyValueFromString( "targetname", "@LogicTimer" );
 		hTimer.__KeyValueFromFloat( "refiretime", 0.01 ); // lowest refire time
         // preserve the ent, dont kill after round
-        // hTimer.__KeyValueFromString( "classname", "soundent" );
+        hTimer.__KeyValueFromString( "classname", "soundent" );
 		hTimer.ValidateScriptScope();
 		local scope = hTimer.GetScriptScope();
 		scope.OnTimer <- OnTimer;
@@ -119,6 +119,7 @@ function OnPostSpawn()
         hGameText.__KeyValueFromString("holdtime", "1");
         hGameText.__KeyValueFromString("fxtime", "0");
         hGameText.__KeyValueFromString("channel", "2");
+        hGameText.__KeyValueFromString( "classname", "soundent" );
     }
 
     if ( pScope.eyes == null )
@@ -132,6 +133,7 @@ function OnPostSpawn()
 		pScope.eyes.__KeyValueFromString( "targetname", szName );
 		pScope.eyes.__KeyValueFromString( "targetreference", szName );
 		pScope.eyes.__KeyValueFromString( "target", szName );
+        pScope.eyes.__KeyValueFromString( "classname", "soundent" );
 		EntFireByHandle( pScope.eyes, "SetMeasureReference", szName, 0.0, null, null );
 		EntFireByHandle( pScope.eyes, "Enable", "" , 0.0, null, null );
         EntFireByHandle( pScope.eyes, "SetMeasureTarget", "@LocalPlayer", 0.0, null, null );
