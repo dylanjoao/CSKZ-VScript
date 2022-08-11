@@ -91,17 +91,17 @@ function OnPostSpawn()
 
 	if( hTimer == null )
 	{
-		hTimer = Entities.CreateByClassname( "logic_timer" );
+        hTimer = Entities.CreateByClassname( "logic_timer" );
 
         hTimer.__KeyValueFromString( "targetname", "@LogicTimer" );
-		hTimer.__KeyValueFromFloat( "refiretime", 0.01 ); // lowest refire time
+        hTimer.__KeyValueFromFloat( "refiretime", 0.01 ); // lowest refire time
         // preserve the ent, dont kill after round
         hTimer.__KeyValueFromString( "classname", "soundent" );
-		hTimer.ValidateScriptScope();
-		local scope = hTimer.GetScriptScope();
-		scope.OnTimer <- OnTimer;
-		hTimer.ConnectOutput( "OnTimer", "OnTimer" );
-		EntFireByHandle( hTimer, "Enable", "", 0, null, null );
+        hTimer.ValidateScriptScope();
+        local scope = hTimer.GetScriptScope();
+        scope.OnTimer <- OnTimer;
+        hTimer.ConnectOutput( "OnTimer", "OnTimer" );
+        EntFireByHandle( hTimer, "Enable", "", 0, null, null );
 	}
 
     if (hGameText == null)
@@ -125,17 +125,17 @@ function OnPostSpawn()
     if ( pScope.eyes == null )
     {
         pScope.eyes = Entities.CreateByClassname( "logic_measure_movement" );
-		pScope.eyes.__KeyValueFromInt( "measuretype", 1 );
-		pScope.eyes.__KeyValueFromString( "measurereference", "" );
-		pScope.eyes.__KeyValueFromString( "measureretarget", "" );
-		pScope.eyes.__KeyValueFromFloat( "targetscale", 1.0 );
-		local szName = "@LocalPlayerEyes";
-		pScope.eyes.__KeyValueFromString( "targetname", szName );
-		pScope.eyes.__KeyValueFromString( "targetreference", szName );
-		pScope.eyes.__KeyValueFromString( "target", szName );
+        pScope.eyes.__KeyValueFromInt( "measuretype", 1 );
+        pScope.eyes.__KeyValueFromString( "measurereference", "" );
+        pScope.eyes.__KeyValueFromString( "measureretarget", "" );
+        pScope.eyes.__KeyValueFromFloat( "targetscale", 1.0 );
+        local szName = "@LocalPlayerEyes";
+        pScope.eyes.__KeyValueFromString( "targetname", szName );
+        pScope.eyes.__KeyValueFromString( "targetreference", szName );
+        pScope.eyes.__KeyValueFromString( "target", szName );
         pScope.eyes.__KeyValueFromString( "classname", "soundent" );
-		EntFireByHandle( pScope.eyes, "SetMeasureReference", szName, 0.0, null, null );
-		EntFireByHandle( pScope.eyes, "Enable", "" , 0.0, null, null );
+        EntFireByHandle( pScope.eyes, "SetMeasureReference", szName, 0.0, null, null );
+        EntFireByHandle( pScope.eyes, "Enable", "" , 0.0, null, null );
         EntFireByHandle( pScope.eyes, "SetMeasureTarget", "@LocalPlayer", 0.0, null, null );
         pScope.eyes.SetOwner( hPlayer );
     }
