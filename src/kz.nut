@@ -1,36 +1,12 @@
 hTimer <- null;
-hGameUI <- null;
-hJumpUI <- null;
 hPlayer <- null;
+hGameText <- null;
+bTrail <- true;
 
-flJumpReset <- 0.0;
-flUseReset <- 0.0;
-
-const colourLabel = "'#a9a9a9'";
-const colourOn = "'#228B22'";
-const colourOff = "'#FFFFFF'";
-const colourOL = "'#D2042D'";
-
-enum Buttons_t {
-    IN_ATTACK       = 0x001,
-    IN_ATTACK2      = 0x002,
-    IN_JUMP         = 0x004,
-    IN_USE          = 0x008,
-    IN_FORWARD      = 0x010,
-    IN_BACK         = 0x020,
-    IN_MOVELEFT     = 0x040,
-    IN_MOVERIGHT    = 0x080,
-};
 
 enum Flags_t {
     FL_ONGROUND     = 0x1,
     FL_DUCKING      = 0x2
-}
-
-enum Strafes_t {
-    ST_NONE         = 0,
-    ST_LEFT         = 1,
-    ST_RIGHT        = 2
 }
 
 function OnTimer()
@@ -38,7 +14,6 @@ function OnTimer()
     hPlayer.ValidateScriptScope();
     local pScope = hPlayer.GetScriptScope();
 
-    pScope.prevAngles = pScope.angles;
     pScope.angles = pScope.eyes.GetAngles();
 
     local curVel = hPlayer.GetVelocity().Length2D();
@@ -52,37 +27,17 @@ function OnTimer()
     if (hPlayer.GetBoundingMaxs().z == 54.0) pScope.flags = pScope.flags | Flags_t.FL_DUCKING;
     else pScope.flags = pScope.flags & ~Flags_t.FL_DUCKING;
 
-    if (round(Time(), 1) == round(flJumpReset, 1)) pScope.buttons = pScope.buttons & ~Buttons_t.IN_JUMP;
-    if (round(Time(), 1) == round(flUseReset, 1)) pScope.buttons = pScope.buttons & ~Buttons_t.IN_USE;
-
-    local forwardColour =  pScope.buttons & Buttons_t.IN_FORWARD ? colourOn : colourOff;
-    local leftColour = pScope.buttons & Buttons_t.IN_MOVELEFT ? colourOn : colourOff;
-    local backColour =  pScope.buttons & Buttons_t.IN_BACK ? colourOn : colourOff;
-    local rightColour =  pScope.buttons & Buttons_t.IN_MOVERIGHT ? colourOn : colourOff;
-    local jumpColour = pScope.buttons & Buttons_t.IN_JUMP ? colourOn : colourOff;
-
-    local duckColour = pScope.flags & Flags_t.FL_DUCKING ? colourOn : colourOff;
-
-    if (pScope.buttons & Buttons_t.IN_MOVELEFT && pScope.buttons & Buttons_t.IN_MOVERIGHT) {
-        leftColour = colourOL;
-        rightColour = colourOL;
-    }
-
-    if (pScope.buttons & Buttons_t.IN_USE) printl("+use");
-
     // On lift off
     if (!(pScope.flags & Flags_t.FL_ONGROUND) && pScope.prevFlags & Flags_t.FL_ONGROUND) {
         pScope.jumpVel = curVel;
         pScope.jumpPos = hPlayer.GetOrigin();
         pScope.jumpAngle = pScope.angles;
-
-        // printl(format("%f - %f = %f", fabs(pScope.angles.y), fabs(pScope.prevAngles.y), fabs(pScope.angles.y) - fabs(pScope.prevAngles.y)));
     }
 
     // On land
     if (!(pScope.prevFlags & Flags_t.FL_ONGROUND) && pScope.flags & Flags_t.FL_ONGROUND)
     {
-        local distance = (sqrt(pow(fabs((pScope.jumpPos.x - hPlayer.GetOrigin().x)), 2) + pow(fabs((pScope.jumpPos.y - hPlayer.GetOrigin().y)), 2))) + 36.0; // normal is 32 but +4 to take into account the traces
+        local distance = (sqrt(pow(fabs((pScope.jumpPos.x - hPlayer.GetOrigin().x)), 2) + pow(fabs((pScope.jumpPos.y - hPlayer.GetOrigin().y)), 2))) + 34.6; // normal is 32 but +4 to take into account the traces
         local colour = "\x8";
 
         if (distance >= 235 && distance < 240) colour = "\xB";
@@ -93,7 +48,6 @@ function OnTimer()
         if (distance >= 200 && distance < 300) ScriptPrintMessageChatAll(format(" \x8[\x4KZ\x8] %s%s\x8: %s%.1f \x8| \x6%.0f / \x6%.0f \x8Speed",
         colour, pScope.jumpVel < 251 ? "LJ" : "BH", colour, distance, pScope.jumpVel, pScope.jumpMaxVel));
 
-        pScope.jumpStrafes = 0;
         pScope.jumpVel = 0;
         pScope.jumpMaxVel = 0;
     }
@@ -103,41 +57,31 @@ function OnTimer()
     {
         if (curVel > pScope.jumpMaxVel) pScope.jumpMaxVel = curVel;
 
-        RenderTrail(hPlayer);
+        if (bTrail) RenderTrail(hPlayer);
     }
 
-    ScriptPrintMessageCenterAll(format(
-    "%f %.0f (%.0f)\n" +
-    "<font color=%s>W</font>" +
-    "<font color=%s>A</font>" +
-    "<font color=%s>S</font>" +
-    "<font color=%s>D</font>   " +
-    "<font color=%s>C</font>   <font color=%s>J</font>",
-    hPlayer.GetOrigin().z, curVel, pScope.jumpVel, forwardColour, leftColour, backColour, rightColour, duckColour, jumpColour));
+    local message = pScope.jumpVel > 0 ? format("\n(%.0f)", pScope.jumpVel ) : "";
 
+    EntFireByHandle( hGameText, "SetText", format("%.0f%s",curVel, message) , 0.0, null, null);
+    EntFireByHandle( hGameText, "Display", "", 0.0, hPlayer, null );
 
     pScope.prevFlags = pScope.flags;
 }
 
-function PrintVector(v) return format("%.3f, %.3f, %.3f", v.x, v.y, v.z);
-
 // Called after the entity is spawned
 function OnPostSpawn()
 {
-    hPlayer = Entities.FindByName(null, "@LocalPlayer");
+    hPlayer = Entities.FindByClassname(null, "player");
     hPlayer.ValidateScriptScope();
+    hPlayer.__KeyValueFromString("targetname", "@LocalPlayer");
     local pScope = hPlayer.GetScriptScope();
 
     if (hPlayer != null) {
-        pScope.buttons <- 0x0;
         pScope.flags <- 0x0;
         pScope.prevFlags <- 0x0;
-        pScope.prevAngles <- Vector(0, 0, 0);
-        pScope.prevStrafe <- Strafes_t.ST_NONE;
         pScope.jumpPos <- Vector(0, 0, 0);
         pScope.jumpVel <- 0.0;
         pScope.jumpAngle <- Vector(0, 0, 0);
-        pScope.jumpStrafes <- 0;
         pScope.jumpMaxVel <- 0;
         pScope.eyes <- null;
         pScope.angles <- Vector(0, 0, 0);
@@ -160,6 +104,23 @@ function OnPostSpawn()
 		EntFireByHandle( hTimer, "Enable", "", 0, null, null );
 	}
 
+    if (hGameText == null)
+    {
+        hGameText = Entities.CreateByClassname( "game_text" );
+        hGameText.__KeyValueFromString("targetname", "@GameText");
+        hGameText.__KeyValueFromString("message", "test");
+        hGameText.__KeyValueFromFloat("x", -1);
+        hGameText.__KeyValueFromFloat("y", 0.8);
+        hGameText.__KeyValueFromInt("effect", 0);
+        hGameText.__KeyValueFromString("color", "255 255 255");
+        hGameText.__KeyValueFromString("color2", "255 255 255");
+        hGameText.__KeyValueFromString("fadein", "0");
+        hGameText.__KeyValueFromString("fadeout", "0");
+        hGameText.__KeyValueFromString("holdtime", "1");
+        hGameText.__KeyValueFromString("fxtime", "0");
+        hGameText.__KeyValueFromString("channel", "2");
+    }
+
     if ( pScope.eyes == null )
     {
         pScope.eyes = Entities.CreateByClassname( "logic_measure_movement" );
@@ -176,62 +137,6 @@ function OnPostSpawn()
         EntFireByHandle( pScope.eyes, "SetMeasureTarget", "@LocalPlayer", 0.0, null, null );
         pScope.eyes.SetOwner( hPlayer );
     }
-}
-
-function SetupInputs()
-{
-    if (hGameUI == null)
-    {
-        hGameUI = CreateGameUI("@GameUI_Local", 128);
-
-        // better than .ConnectOutput and have a million functions, all inputs proccesed through two functions & identified using buttons
-        EntFireByHandle(hGameUI, "AddOutput", "PlayerOff @GameUI_Local:RunScriptCode:OnPlus(Buttons_t.IN_USE):0:-1", 0, null, null);
-        EntFireByHandle(hGameUI, "AddOutput", "PressedMoveLeft @GameUI_Local:RunScriptCode:OnPlus(Buttons_t.IN_MOVELEFT):0:-1", 0, null, null);
-        EntFireByHandle(hGameUI, "AddOutput", "UnpressedMoveLeft @GameUI_Local:RunScriptCode:OnMinus(Buttons_t.IN_MOVELEFT):0:-1", 0, null, null);
-        EntFireByHandle(hGameUI, "AddOutput", "PressedMoveRight @GameUI_Local:RunScriptCode:OnPlus(Buttons_t.IN_MOVERIGHT):0:-1", 0, null, null);
-        EntFireByHandle(hGameUI, "AddOutput", "UnpressedMoveRight @GameUI_Local:RunScriptCode:OnMinus(Buttons_t.IN_MOVERIGHT):0:-1", 0, null, null);
-        EntFireByHandle(hGameUI, "AddOutput", "PressedForward @GameUI_Local:RunScriptCode:OnPlus(Buttons_t.IN_FORWARD):0:-1", 0, null, null);
-        EntFireByHandle(hGameUI, "AddOutput", "UnpressedForward @GameUI_Local:RunScriptCode:OnMinus(Buttons_t.IN_FORWARD):0:-1", 0, null, null);
-        EntFireByHandle(hGameUI, "AddOutput", "PressedBack @GameUI_Local:RunScriptCode:OnPlus(Buttons_t.IN_BACK):0:-1", 0, null, null);
-        EntFireByHandle(hGameUI, "AddOutput", "UnpressedBack @GameUI_Local:RunScriptCode:OnMinus(Buttons_t.IN_BACK):0:-1", 0, null, null);
-        EntFireByHandle(hGameUI, "AddOutput", "PressedAttack @GameUI_Local:RunScriptCode:OnPlus(Buttons_t.IN_ATTACK):0:-1", 0, null, null);
-        EntFireByHandle(hGameUI, "AddOutput", "UnpressedAttack @GameUI_Local:RunScriptCode:OnMinus(Buttons_t.IN_ATTACK):0:-1", 0, null, null);
-        EntFireByHandle(hGameUI, "AddOutput", "PressedAttack2 @GameUI_Local:RunScriptCode:OnPlus(Buttons_t.IN_ATTACK2):0:-1", 0, null, null);
-        EntFireByHandle(hGameUI, "AddOutput", "UnpressedAttack2 @GameUI_Local:RunScriptCode:OnMinus(Buttons_t.IN_ATTACK2):0:-1", 0, null, null);
-
-        EntFireByHandle(hGameUI, "Activate", "", 0.0, hPlayer, hPlayer);
-    }
-
-    if (hJumpUI == null)
-    {
-        hJumpUI = CreateGameUI("@GameUI_Jump", 256)
-        EntFireByHandle(hJumpUI, "AddOutput", "PlayerOff @GameUI_Jump:RunScriptCode:OnPlus(Buttons_t.IN_JUMP):0:-1", 0, null, null);
-        EntFireByHandle(hJumpUI, "Activate", "@LocalPlayer", 0.0, null, null);
-    }
-}
-
-function OnPlus( input )
-{
-    hPlayer.ValidateScriptScope();
-    local pScope = hPlayer.GetScriptScope();
-
-    switch (input) {
-        case Buttons_t.IN_USE:
-            flUseReset = Time() + 0.2; // Use reset time
-            EntFireByHandle(hGameUI, "Activate", "@LocalPlayer", 0.0, null, null);
-        case Buttons_t.IN_JUMP:
-            flJumpReset = Time() + 0.01; // Jump reset time
-            EntFireByHandle(hJumpUI, "Activate", "@LocalPlayer", 0.0, null, null);
-    }
-
-    pScope.buttons = pScope.buttons | input;
-}
-
-function OnMinus( input )
-{
-    hPlayer.ValidateScriptScope();
-    local pScope = hPlayer.GetScriptScope();
-    pScope.buttons = pScope.buttons & ~input;
 }
 
 // many traces 0_0
@@ -255,6 +160,7 @@ function IsGrounded(player)
     local vals = [vMins, vC1, vC2, vC3, vC4];
     for(local i = 0; i < vals.len()-1; i++ )
     {
+        // draw the traces
         // DebugDrawLine(Vector(vals[i].x, vals[i].y, vals[i].z-2.0), vals[i+1], 0, 0, 255, false, 0.1);
         // DebugDrawLine(vPos, Vector(vals[i+1].x, vals[i+1].y, vals[i+1].z-2.0), 0, 255, 255, false, 0.1);
 
@@ -277,34 +183,30 @@ function RenderTrail(player)
     vVel.x = (vVel.x / 120.0) + vPos.x;
     vVel.y = (vVel.y / 120.0) + vPos.y;
     vVel.z = pScope.jumpPos.z;
-    // vVel.y = (vVel.y / 120.0) + vPos.y;
 
-    DebugDrawLine(Vector(vPos.x, vPos.y, pScope.jumpPos.z), vVel, r, g, 0, false, 2.0);
-    // DebugDrawLine(vPos, vVel, r, g, 0, false, 2.0);
+    DebugDrawLine(Vector(vPos.x, vPos.y, pScope.jumpPos.z), vVel, r, g, 0, false, 3.0);
 }
 
-function CreateGameUI( targetname, spawnflags )
-{
-    local ent = Entities.CreateByClassname("game_ui");
-    ent.__KeyValueFromString("targetname", targetname);
-    ent.__KeyValueFromInt("spawnflags", spawnflags);
-    ent.__KeyValueFromFloat("fieldofview", -1.0)
-    return ent;
-}
 
 function PrintLogo()
 {
 
-    printl(".-------------------------------------------.");
-    printl("| Made by                                   |")
-    printl("|                                           |")
-    printl("|     '||            .'|.             '||'  |");
-    printl("|   .. ||    ....  .||.   ... ...      ||   |");
-    printl("| .'  '||  .|...||  ||     ||  ||      ||   |");
-    printl("| |.   ||  ||       ||     ||  ||      ||   |");
-    printl("| '|..'||.  '|...' .||.    '|..'|. || .|'   |");
-    printl("|                                   '''     |");
-    printl("'-------------------------------------------'");
+    printl(".-------------------------------------------------------------------------------------.");
+    printl("|                                                                                     |")
+    printl("|                                     kz vscript                                      |")
+    printl("|                                    made by defuJ                                    |")
+    printl("|                                                                                     |")
+    printl("|  [info]                                                                             |")
+    printl("|  - youtube: https://www.youtube.com/c/defuJ                                         |")
+    printl("|  - source : https://github.com/dephoon/CSGO-SMOL-VSCRIPTS/blob/main/src/kz.nut      |")
+    printl("|  - steam  : https://steamcommunity.com/id/defuj                                     |")
+    printl("|                                                                                     |")
+    printl("|  [commands]                                                                         |")
+    printl("|  - kz_setpos                                                                        |")
+    printl("|  - kz_teleport                                                                      |")
+    printl("|  - kz_trail                                                                         |")
+    printl("|                                                                                     |")
+    printl("'-------------------------------------------------------------------------------------'");
 }
 
 function round( v, dp ) {
@@ -327,8 +229,15 @@ function SetTeleport()
 function Teleport()
 {
     local pScope = hPlayer.GetScriptScope();
+    hPlayer.SetVelocity(Vector(0, 0, 0));
     hPlayer.SetOrigin(pScope.telePos);
     hPlayer.SetAngles(pScope.teleAng.x, pScope.teleAng.y, pScope.teleAng.z);
+}
+
+function ToggleTrail()
+{
+    bTrail = !bTrail;
+    printl("[KZ] Trail " + (bTrail ? "enabled" : "disabled"));
 }
 
 PrintLogo();
